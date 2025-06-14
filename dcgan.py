@@ -201,10 +201,15 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 os.makedirs(opt.outdir, exist_ok=True)
 
-print(f"Training for {opt.n_epochs} Epoch / {((len(dataloader) * opt.batch_size * opt.n_epochs) // 1000)} kimg")
-start = time.time()
+total_kimg_to_train = ((len(dataloader) * opt.batch_size * opt.n_epochs) // 1000)
 
-for epoch in range(1, opt.n_epochs):
+print(f"Training for {opt.n_epochs} Epoch / {total_kimg_to_train} kimg")
+
+last_interval_time = time.time() 
+last_kimg_reported = 0 
+total_images_processed = 0
+
+for epoch in range(1, opt.n_epochs + 1):
     for i, (imgs, _) in enumerate(dataloader, 1):
 
         # Adversarial ground truths
@@ -246,34 +251,44 @@ for epoch in range(1, opt.n_epochs):
         d_loss.backward()
         optimizer_D.step()
 
-        if i % 4000 == 0:
-            kimg = ((i + ((epoch - 1) * len(dataloader) * opt.batch_size) ) // 1000)
+        total_images_processed += opt.batch_size
+        current_kimg = total_images_processed // 1000
 
+        if current_kimg >= last_kimg_reported + 4:
+            time_taken = time.time() - last_interval_time
             print(
                 "[Time/4 kimg : %.2f sec] [Epoch %d/%d] [kimg %d/%d] [D loss: %f] [G loss: %f]"
-                % (time.time()-start, epoch, opt.n_epochs, kimg, ((len(dataloader) * opt.n_epochs * opt.batch_size) // 1000), d_loss.item(), g_loss.item())
+                % (
+                    time_taken,
+                    epoch,
+                    opt.n_epochs,
+                    current_kimg,
+                    total_kimg_to_train,
+                    d_loss.item(),
+                    g_loss.item()
+                )
             )
+            last_interval_time = time.time() 
+            last_kimg_reported = current_kimg 
 
-            start = time.time()
-
-            if (i // 1000) % opt.evaluate_interval == 0:
+            # Evaluation
+            if current_kimg % opt.evaluate_interval == 0:
                 # FID evaluation
-                n_sample = 50_000 if len(dataloader) >= 50_000 else len(dataloader)
+                fid_n_samples = 50_000 if (len(dataloader) * opt.batch_size) >= 50_000 else (len(dataloader) * opt.batch_size)
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 fid_score(
-                    kimg=kimg,
+                    kimg=current_kimg,
                     dir=opt.outdir,
                     generator=generator,
                     latent_dim=opt.latent_dim,
                     real_dir=opt.dataset_dir,
                     device=device,
-                    n_samples=n_sample,
+                    n_samples=fid_n_samples,
                     batch_size=opt.batch_size
                 )
 
                 # Saving Generator
-                out = os.path.join(opt.outdir, f"generator_{kimg}.pt")
-
+                out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
                 traced_gen = torch.jit.trace(generator.to(device), z)
