@@ -30,6 +30,7 @@ parser.add_argument("--img_size", type=int, default=128, help="size of each imag
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--evaluate_interval", type=int, default=20, help="interval between generator evaluation using FID")
 parser.add_argument("--outdir", type=str, help="Training output directory")
+parser.add_argument("--dataset_folder_dir", type=str, help="Image dataset folder directory")
 parser.add_argument("--dataset_dir", type=str, help="Image dataset directory")
 opt = parser.parse_args()
 
@@ -40,7 +41,7 @@ f"""
 ====================
 
 Epoch: {opt.n_epochs}
-Dataset directory: {opt.dataset_dir}
+Dataset directory: {opt.dataset_folder_dir}
 Output Directory: {opt.outdir}
 Image Size: {opt.img_size} x {opt.img_size}
 Evaluation Interval: {opt.evaluate_interval}
@@ -167,7 +168,7 @@ discriminator.apply(weights_init_normal)
 
 print(
 f"""
-Configuring dataset from {opt.dataset_dir}
+Configuring dataset from {opt.dataset_folder_dir}
 """
 )
 
@@ -178,7 +179,7 @@ transform = transforms.Compose([
     transforms.Normalize([0.5]*3, [0.5]*3),
 ])
 
-imagenet_dataset = datasets.ImageFolder(opt.dataset_dir, transform=transform)
+imagenet_dataset = datasets.ImageFolder(opt.dataset_folder_dir, transform=transform)
 dataloader = DataLoader(
     imagenet_dataset,
     batch_size=opt.batch_size,
