@@ -274,7 +274,11 @@ for epoch in range(1, opt.n_epochs + 1):
             # Evaluation
             if current_kimg % opt.evaluate_interval == 0:
                 # FID evaluation
-                fid_n_samples = 50_000 if (len(dataloader) * opt.batch_size) >= 50_000 else (len(dataloader) * opt.batch_size)
+                dataset_total_images = len(dataloader) * opt.batch_size
+                fid_n_samples = min(50_000, dataset_total_images)
+                if fid_n_samples < opt.batch_size: 
+                    fid_n_samples = opt.batch_size
+
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 fid_score(
                     kimg=current_kimg,
