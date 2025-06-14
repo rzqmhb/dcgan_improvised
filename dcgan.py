@@ -61,28 +61,30 @@ class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
 
+        # Input: opt.latent_dim x 1 x 1
         self.model = nn.Sequential(
-            nn.ConvTranspose2d(opt.latent_dim, 1024, 4, 1, 0),
+            # layer 1: (latent_dim) -> (ngf*8) x 4 x 4
+            nn.ConvTranspose2d(opt.latent_dim, 1024, 4, 1, 0, bias=False), # Changed 1024 to 1024 (ngf*8 for 128x128)
             nn.BatchNorm2d(1024),
             nn.ReLU(True),
-
-            nn.ConvTranspose2d(1024, 512, 4, 2, 1),
+            # layer 2: (ngf*8) x 4 x 4 -> (ngf*4) x 8 x 8
+            nn.ConvTranspose2d(1024, 512, 4, 2, 1, bias=False), # Changed 512 to 512 (ngf*4 for 128x128)
             nn.BatchNorm2d(512),
             nn.ReLU(True),
-
-            nn.ConvTranspose2d(512, 256, 4, 2, 1),
+            # layer 3: (ngf*4) x 8 x 8 -> (ngf*2) x 16 x 16
+            nn.ConvTranspose2d(512, 256, 4, 2, 1, bias=False), # Changed 256 to 256 (ngf*2 for 128x128)
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-
-            nn.ConvTranspose2d(256, 128, 4, 2, 1),
+            # layer 4: (ngf*2) x 16 x 16 -> (ngf) x 32 x 32
+            nn.ConvTranspose2d(256, 128, 4, 2, 1, bias=False), # Changed 128 to 128 (ngf for 128x128)
             nn.BatchNorm2d(128),
             nn.ReLU(True),
-
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
+            # layer 5: (ngf) x 32 x 32 -> (ngf/2) x 64 x 64
+            nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=False), # Added for 128x128 images
             nn.BatchNorm2d(64),
             nn.ReLU(True),
-
-            nn.ConvTranspose2d(64, opt.channels, 4, 2, 1),
+            # layer 6: (ngf/2) x 64 x 64 -> (channels) x 128 x 128
+            nn.ConvTranspose2d(64, opt.channels, 4, 2, 1, bias=False), # Added for 128x128 images
             nn.Tanh()
         )
 
@@ -95,23 +97,29 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
+        # Input: (channels) x 128 x 128
         self.model = nn.Sequential(
-            nn.Conv2d(opt.channels, 64, 4, 2, 1),
+            # layer 1: (channels) x 128 x 128 -> (ndf/2) x 64 x 64
+            nn.Conv2d(opt.channels, 64, 4, 2, 1, bias=False), # Changed 64 to 64 (ndf/2 for 128x128)
             nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(64, 128, 4, 2, 1),
+            # layer 2: (ndf/2) x 64 x 64 -> (ndf) x 32 x 32
+            nn.Conv2d(64, 128, 4, 2, 1, bias=False), # Changed 128 to 128 (ndf for 128x128)
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(128, 256, 4, 2, 1),
+            # layer 3: (ndf) x 32 x 32 -> (ndf*2) x 16 x 16
+            nn.Conv2d(128, 256, 4, 2, 1, bias=False), # Changed 256 to 256 (ndf*2 for 128x128)
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(256, 512, 4, 2, 1),
+            # layer 4: (ndf*2) x 16 x 16 -> (ndf*4) x 8 x 8
+            nn.Conv2d(256, 512, 4, 2, 1, bias=False), # Changed 512 to 512 (ndf*4 for 128x128)
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(512, 1, 4, 1, 0),
+            # layer 5: (ndf*4) x 8 x 8 -> (ndf*8) x 4 x 4
+            nn.Conv2d(512, 1024, 4, 2, 1, bias=False), # Added for 128x128 images
+            nn.BatchNorm2d(1024),
+            nn.LeakyReLU(0.2, inplace=True),
+            # layer 6: (ndf*8) x 4 x 4 -> 1 x 1 x 1
+            nn.Conv2d(1024, 1, 4, 1, 0, bias=False), # Final layer to output 1x1
             nn.Sigmoid()
         )
 
@@ -192,7 +200,7 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 os.makedirs(opt.outdir, exist_ok=True)
 
-print(f"Training for {opt.n_epochs} Epoch / {((len(dataloader) * opt.n_epochs) // 1000)} kimg")
+print(f"Training for {opt.n_epochs} Epoch / {((len(dataloader) * opt.batch_size * opt.n_epochs) // 1000)} kimg")
 
 for epoch in range(1, opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader, 1):
@@ -237,16 +245,17 @@ for epoch in range(1, opt.n_epochs):
         optimizer_D.step()
 
         if i % 4000 == 0:
-            kimg = ((i + ((epoch - 1) * len(dataloader)) ) // 1000)
+            kimg = ((i + ((epoch - 1) * len(dataloader) * opt.batch_size) ) // 1000)
 
             print(
                 "[Epoch %d/%d] [kimg %d/%d] [D loss: %f] [G loss: %f]"
-                % (epoch, opt.n_epochs, kimg, ((len(dataloader) * opt.n_epochs) // 1000), d_loss.item(), g_loss.item())
+                % (epoch, opt.n_epochs, kimg, ((len(dataloader) * opt.n_epochs * opt.batch_size) // 1000), d_loss.item(), g_loss.item())
             )
 
             if (i // 1000) % opt.evaluate_interval == 0:
                 # FID evaluation
                 n_sample = 50_000 if len(dataloader) >= 50_000 else len(dataloader)
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 fid_score(
                     kimg=kimg,
                     dir=opt.outdir,
