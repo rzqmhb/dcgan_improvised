@@ -31,7 +31,19 @@ parser.add_argument("--evaluate_interval", type=int, default=20, help="interval 
 parser.add_argument("--outdir", type=str, help="Training output directory")
 parser.add_argument("--dataset_dir", type=str, help="Image dataset directory")
 opt = parser.parse_args()
-print(opt)
+
+print(
+f"""
+====================
+  Training Options:
+====================
+
+Epoch: {opt.n_epochs}
+Dataset directory: {opt.dataset_dir}
+Output Directory: {opt.outdir}
+Image Size: {opt.img_size} x {opt.img_size}
+Evaluation Interval: {opt.evaluate_interval}
+""")
 
 cuda = True if torch.cuda.is_available() else False
 
@@ -115,6 +127,26 @@ adversarial_loss = torch.nn.BCELoss()
 generator = Generator()
 discriminator = Discriminator()
 
+print(
+f"""
+===========================
+    Generator Structure
+===========================
+
+{generator}
+"""
+)
+
+print(
+f"""
+===============================
+    Discriminator Structure
+===============================
+
+{discriminator}
+"""
+)
+
 if cuda:
     generator.cuda()
     discriminator.cuda()
@@ -124,14 +156,19 @@ if cuda:
 generator.apply(weights_init_normal)
 discriminator.apply(weights_init_normal)
 
-# Load image dataset
+print(
+f"""
+Configuring dataset from {opt.dataset_dir}
+"""
+)
+
+# Configure image data loader
 transform = transforms.Compose([
     transforms.Resize(opt.img_size),
     transforms.ToTensor(),
     transforms.Normalize([0.5]*3, [0.5]*3),
 ])
 
-# Configure image data loader
 imagenet_dataset = datasets.ImageFolder(opt.dataset_dir, transform=transform)
 dataloader = DataLoader(
     imagenet_dataset,
@@ -154,6 +191,8 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 # ----------
 
 os.makedirs(opt.outdir, exist_ok=True)
+
+print(f"Training for {opt.n_epochs} Epoch / {((len(dataloader) * opt.n_epochs) // 1000)} kimg")
 
 for epoch in range(1, opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader, 1):
