@@ -153,6 +153,8 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 #  Training
 # ----------
 
+os.makedirs(opt.outdir, exist_ok=True)
+
 for epoch in range(1, opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader, 1):
 
