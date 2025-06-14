@@ -182,9 +182,9 @@ dataloader = DataLoader(
     imagenet_dataset,
     batch_size=opt.batch_size,
     shuffle=True,
-    num_workers=2,
+    num_workers=0,
     pin_memory=True,
-    persistent_workers=True
+    persistent_workers=False
 )
 
 
