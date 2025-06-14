@@ -2,6 +2,7 @@ import argparse
 import os
 import numpy as np
 import math
+import time
 
 from torchvision.utils import save_image
 
@@ -19,7 +20,7 @@ os.makedirs("images", exist_ok=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
-parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
+parser.add_argument("--batch_size", type=int, default=50, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
@@ -201,6 +202,7 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 os.makedirs(opt.outdir, exist_ok=True)
 
 print(f"Training for {opt.n_epochs} Epoch / {((len(dataloader) * opt.batch_size * opt.n_epochs) // 1000)} kimg")
+start = time.time()
 
 for epoch in range(1, opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader, 1):
@@ -248,9 +250,11 @@ for epoch in range(1, opt.n_epochs):
             kimg = ((i + ((epoch - 1) * len(dataloader) * opt.batch_size) ) // 1000)
 
             print(
-                "[Epoch %d/%d] [kimg %d/%d] [D loss: %f] [G loss: %f]"
-                % (epoch, opt.n_epochs, kimg, ((len(dataloader) * opt.n_epochs * opt.batch_size) // 1000), d_loss.item(), g_loss.item())
+                "[Time/4 kimg : %.2f sec] [Epoch %d/%d] [kimg %d/%d] [D loss: %f] [G loss: %f]"
+                % (time.time()-start, epoch, opt.n_epochs, kimg, ((len(dataloader) * opt.n_epochs * opt.batch_size) // 1000), d_loss.item(), g_loss.item())
             )
+
+            start = time.time()
 
             if (i // 1000) % opt.evaluate_interval == 0:
                 # FID evaluation
