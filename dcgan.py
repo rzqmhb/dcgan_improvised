@@ -28,7 +28,7 @@ parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads 
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
 parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
-parser.add_argument("--evaluate_interval", type=int, default=20, help="interval between generator evaluation using FID")
+parser.add_argument("--evaluate_interval", type=int, default=100, help="interval between generator evaluation using FID")
 parser.add_argument("--outdir", type=str, help="Training output directory")
 parser.add_argument("--dataset_folder_dir", type=str, help="Image dataset folder directory")
 parser.add_argument("--dataset_dir", type=str, help="Image dataset directory")
@@ -269,19 +269,19 @@ for epoch in range(1, opt.n_epochs + 1):
                     g_loss.item()
                 )
             )
-            last_interval_time = time.time() 
             last_kimg_reported = current_kimg 
 
             # Evaluation
             if current_kimg % opt.evaluate_interval == 0:
                 # FID evaluation
+                eval_start_time = time.time()
                 dataset_total_images = len(dataloader) * opt.batch_size
                 fid_n_samples = min(50_000, dataset_total_images)
                 if fid_n_samples < opt.batch_size: 
                     fid_n_samples = opt.batch_size
 
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                fid_score(
+                score = fid_score(
                     kimg=current_kimg,
                     dir=opt.outdir,
                     generator=generator,
@@ -292,9 +292,14 @@ for epoch in range(1, opt.n_epochs + 1):
                     batch_size=opt.batch_size
                 )
 
+                time_taken = eval_start_time - time.time()
+                print(f"Network evaluated at {current_kimg} kimg with FID: {score}. Time taken: {time_taken:.2f} seconds")
+
                 # Saving Generator
                 out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
                 traced_gen = torch.jit.trace(generator.to(device), z)
                 traced_gen.save(out)
+            
+            last_interval_time = time.time() 

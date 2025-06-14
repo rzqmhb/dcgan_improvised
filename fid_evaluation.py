@@ -53,3 +53,5 @@ def fid_score(kimg, dir, generator, latent_dim, real_dir, device, n_samples=5000
         out = os.path.join(dir, 'FID_Evaluation.json')
         
         dump_json_data(out, kimg, score)
+
+        return score
