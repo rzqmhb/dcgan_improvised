@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torch
 
 from fid_evaluation import fid_score
+from log_writer import write_log
 
 os.makedirs("images", exist_ok=True)
 
@@ -29,13 +30,13 @@ parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality 
 parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
 parser.add_argument("--channels", type=int, default=3, help="number of image channels")
 parser.add_argument("--evaluate_interval", type=int, default=100, help="interval between generator evaluation using FID")
+parser.add_argument("--save_interval", type=int, default=500, help="interval between generator saving")
 parser.add_argument("--outdir", type=str, help="Training output directory")
 parser.add_argument("--dataset_folder_dir", type=str, help="Image dataset folder directory")
 parser.add_argument("--dataset_dir", type=str, help="Image dataset directory")
 opt = parser.parse_args()
 
-print(
-f"""
+msg = f"""
 ====================
   Training Options:
 ====================
@@ -45,7 +46,11 @@ Dataset directory: {opt.dataset_folder_dir}
 Output Directory: {opt.outdir}
 Image Size: {opt.img_size} x {opt.img_size}
 Evaluation Interval: {opt.evaluate_interval}
-""")
+"""
+log_dir = os.path.join(opt.outdir, "log.txt")
+
+print(msg)
+write_log(msg="\n"+msg, dir=log_dir)
 
 cuda = True if torch.cuda.is_available() else False
 
@@ -137,25 +142,25 @@ adversarial_loss = torch.nn.BCELoss()
 generator = Generator()
 discriminator = Discriminator()
 
-print(
-f"""
+msg = f"""
 ===========================
     Generator Structure
 ===========================
 
 {generator}
 """
-)
+print(msg)
+write_log(msg="\n"+msg, dir=log_dir)
 
-print(
-f"""
+msg = f"""
 ===============================
     Discriminator Structure
 ===============================
 
 {discriminator}
 """
-)
+print(msg)
+write_log(msg="\n"+msg, dir=log_dir)
 
 if cuda:
     generator.cuda()
@@ -166,11 +171,11 @@ if cuda:
 generator.apply(weights_init_normal)
 discriminator.apply(weights_init_normal)
 
-print(
-f"""
+msg = f"""
 Configuring dataset from {opt.dataset_folder_dir}
 """
-)
+print(msg)
+write_log(msg="\n"+msg, dir=log_dir)
 
 # Configure image data loader
 transform = transforms.Compose([
@@ -204,7 +209,9 @@ os.makedirs(opt.outdir, exist_ok=True)
 
 total_kimg_to_train = ((len(dataloader) * opt.batch_size * opt.n_epochs) // 1000)
 
-print(f"Training for {opt.n_epochs} Epoch / {total_kimg_to_train} kimg")
+msg = f"Training for {opt.n_epochs} Epoch / {total_kimg_to_train} kimg"
+print(msg)
+write_log(msg="\n"+msg, dir=log_dir)
 
 last_interval_time = time.time() 
 last_kimg_reported = 0 
@@ -257,8 +264,9 @@ for epoch in range(1, opt.n_epochs + 1):
 
         if current_kimg >= last_kimg_reported + 4:
             time_taken = time.time() - last_interval_time
-            print(
-                "[Time/4 kimg : %.2f sec] [Epoch %d/%d] [kimg %d/%d] [D loss: %f] [G loss: %f]"
+            last_kimg_reported = current_kimg 
+            
+            msg = ("[Time/4 kimg : %.2f sec] [Epoch %d/%d] [kimg %d/%d] [D loss: %f] [G loss: %f]"
                 % (
                     time_taken,
                     epoch,
@@ -269,7 +277,8 @@ for epoch in range(1, opt.n_epochs + 1):
                     g_loss.item()
                 )
             )
-            last_kimg_reported = current_kimg 
+            print(msg)
+            write_log(msg="\n"+msg, dir=log_dir)
 
             # Evaluation
             if current_kimg % opt.evaluate_interval == 0:
@@ -292,10 +301,15 @@ for epoch in range(1, opt.n_epochs + 1):
                     batch_size=opt.batch_size
                 )
 
-                time_taken = eval_start_time - time.time()
-                print(f"Network evaluated at {current_kimg} kimg with FID: {score}. Time taken: {time_taken:.2f} seconds")
+                time_taken = time.time() - eval_start_time
 
-                # Saving Generator
+                msg = f"Network evaluated at {current_kimg} kimg with FID: {score}. Time taken: {time_taken:.2f} seconds"
+                print(msg)
+                write_log(msg="\n"+msg, dir=log_dir)
+            
+            
+            # Saving Generator
+            if current_kimg % opt.save_interval == 0:
                 out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
