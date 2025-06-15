@@ -22,9 +22,12 @@ os.makedirs("images", exist_ok=True)
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=50, help="size of the batches")
-parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
-parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
-parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
+parser.add_argument("--g_lr", type=float, default=0.0002, help="adam: learning rate")
+parser.add_argument("--g_b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
+parser.add_argument("--g_b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
+parser.add_argument("--d_lr", type=float, default=0.0002, help="adam: learning rate")
+parser.add_argument("--d_b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
+parser.add_argument("--d_b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
 parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
 parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
 parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
@@ -196,8 +199,8 @@ dataloader = DataLoader(
 
 
 # Optimizers
-optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
-optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt.b1, opt.b2))
+optimizer_G = torch.optim.Adam(generator.parameters(), lr=opt.g_lr, betas=(opt.g_b1, opt.g_b2))
+optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.d_lr, betas=(opt.d_b1, opt.d_b2))
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
