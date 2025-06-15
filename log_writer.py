@@ -2,7 +2,7 @@ import os
 
 def write_log(msg: str, dir: str):
 
-    os.makedirs(dir, exist_ok=True)
+    os.makedirs(os.path.dirname(dir), exist_ok=True)
     
     if not msg.startswith("\n"):
         msg = "\n" + msg
