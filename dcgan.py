@@ -282,43 +282,43 @@ for epoch in range(1, opt.n_epochs + 1):
             )
             print(msg)
             write_log(msg="\n"+msg, dir=log_dir)
-
-
-            # Saving Generator
-            if current_kimg % opt.save_interval == 0:
-                out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
-                traced_gen = torch.jit.trace(generator.to(device), z)
-                traced_gen.save(out)
-
-
-            # Evaluation
-            if current_kimg % opt.evaluate_interval == 0:
-                # FID evaluation
-                eval_start_time = time.time()
-                dataset_total_images = len(dataloader) * opt.batch_size
-                fid_n_samples = min(50_000, dataset_total_images)
-                if fid_n_samples < opt.batch_size: 
-                    fid_n_samples = opt.batch_size
-
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                score = fid_score(
-                    kimg=current_kimg,
-                    dir=opt.outdir,
-                    generator=generator,
-                    latent_dim=opt.latent_dim,
-                    real_dir=opt.dataset_dir,
-                    device=device,
-                    n_samples=fid_n_samples,
-                    batch_size=opt.batch_size
-                )
-
-                time_taken = time.time() - eval_start_time
-
-                msg = f"Network evaluated at {current_kimg} kimg with FID: {score}. Time taken: {time_taken:.2f} seconds"
-                print(msg)
-                write_log(msg="\n"+msg, dir=log_dir)
             
+            last_interval_time = time.time()
+
+
+        # Saving Generator
+        if current_kimg % opt.save_interval == 0:
+            out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
+            traced_gen = torch.jit.trace(generator.to(device), z)
+            traced_gen.save(out)
+
+
+        # Evaluation
+        if current_kimg % opt.evaluate_interval == 0:
+            # FID evaluation
+            eval_start_time = time.time()
+            dataset_total_images = len(dataloader) * opt.batch_size
+            fid_n_samples = min(50_000, dataset_total_images)
+            if fid_n_samples < opt.batch_size: 
+                fid_n_samples = opt.batch_size
+
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            score = fid_score(
+                kimg=current_kimg,
+                dir=opt.outdir,
+                generator=generator,
+                latent_dim=opt.latent_dim,
+                real_dir=opt.dataset_dir,
+                device=device,
+                n_samples=fid_n_samples,
+                batch_size=opt.batch_size
+            )
+
+            time_taken = time.time() - eval_start_time
+
+            msg = f"Network evaluated at {current_kimg} kimg with FID: {score}. Time taken: {time_taken:.2f} seconds"
+            print(msg)
+            write_log(msg="\n"+msg, dir=log_dir)
             
-            last_interval_time = time.time() 
