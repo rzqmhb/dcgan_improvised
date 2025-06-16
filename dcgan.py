@@ -220,6 +220,9 @@ last_interval_time = time.time()
 last_kimg_reported = 0 
 total_images_processed = 0
 
+last_eval_kimg = -1 
+last_save_kimg = -1 
+
 for epoch in range(1, opt.n_epochs + 1):
     for i, (imgs, _) in enumerate(dataloader, 1):
 
@@ -287,16 +290,18 @@ for epoch in range(1, opt.n_epochs + 1):
 
 
         # Saving Generator
-        if current_kimg % opt.save_interval == 0:
+        if current_kimg > 0 and current_kimg % opt.save_interval == 0 and current_kimg != last_save_kimg:
             out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
             traced_gen = torch.jit.trace(generator.to(device), z)
             traced_gen.save(out)
+            
+            last_save_kimg = current_kimg
 
 
         # Evaluation
-        if current_kimg % opt.evaluate_interval == 0:
+        if current_kimg > 0 and current_kimg % opt.evaluate_interval == 0 and current_kimg != last_eval_kimg:
             # FID evaluation
             eval_start_time = time.time()
             dataset_total_images = len(dataloader) * opt.batch_size
@@ -322,3 +327,4 @@ for epoch in range(1, opt.n_epochs + 1):
             print(msg)
             write_log(msg="\n"+msg, dir=log_dir)
             
+            last_eval_kimg = current_kimg
