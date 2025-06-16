@@ -283,6 +283,16 @@ for epoch in range(1, opt.n_epochs + 1):
             print(msg)
             write_log(msg="\n"+msg, dir=log_dir)
 
+
+            # Saving Generator
+            if current_kimg % opt.save_interval == 0:
+                out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
+                traced_gen = torch.jit.trace(generator.to(device), z)
+                traced_gen.save(out)
+
+
             # Evaluation
             if current_kimg % opt.evaluate_interval == 0:
                 # FID evaluation
@@ -310,13 +320,5 @@ for epoch in range(1, opt.n_epochs + 1):
                 print(msg)
                 write_log(msg="\n"+msg, dir=log_dir)
             
-            
-            # Saving Generator
-            if current_kimg % opt.save_interval == 0:
-                out = os.path.join(opt.outdir, f"generator_{current_kimg}.pt")
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                z = torch.randn(1, opt.latent_dim, 1, 1).to(device)
-                traced_gen = torch.jit.trace(generator.to(device), z)
-                traced_gen.save(out)
             
             last_interval_time = time.time() 
